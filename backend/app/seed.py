@@ -74,6 +74,17 @@ CREATE TABLE IF NOT EXISTS 行程贯验 (
   是否通过 INTEGER NOT NULL,
   说明 TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS 强制结账 (
+  强制结键 TEXT PRIMARY KEY,
+  开腿键 TEXT NOT NULL UNIQUE,
+  卡号 TEXT NOT NULL,
+  方式 TEXT NOT NULL DEFAULT '虚出成对',
+  虚出事件编号 TEXT NOT NULL,
+  行程键 TEXT NOT NULL,
+  操作员 TEXT NOT NULL DEFAULT '',
+  原因 TEXT NOT NULL DEFAULT '',
+  处理时 TEXT NOT NULL
+);
 """
 
 
@@ -91,9 +102,13 @@ def 初始化库() -> None:
             "同站进出": "允许",
             "重复进站策略": "旧腿旁路并开新腿",
             "配对策略": "同卡先进后出",
+            "强制结口径": "虚出成对",
             "骨架": "刷卡点装载→同卡进站出站成对物化→缺腿异向超时旁路→行程账与刷卡点互证",
         }.items():
             conn.execute("INSERT INTO 站规(键, 值) VALUES (?, ?)", (k, v))
+    conn.execute(
+        "INSERT OR IGNORE INTO 站规(键, 值) VALUES (?, ?)", ("强制结口径", "虚出成对")
+    )
     if conn.execute("SELECT COUNT(*) AS c FROM 线路").fetchone()["c"] == 0:
         conn.execute("INSERT INTO 线路(线路键, 名称) VALUES (?, ?)", ("线1", "一号线"))
         for i, (k, n) in enumerate(

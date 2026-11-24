@@ -43,6 +43,25 @@ def 跑贯验() -> dict:
         if 开腿刷 != 开腿数:
             问题.append(f"已开腿刷卡{开腿刷} ≠ 在途开腿{开腿数}")
 
+        # 强制结互证：每笔强制结 = 开腿已成对 + 虚出/进站刷卡连成对 + 行程在账。
+        强制结数 = conn.execute("SELECT COUNT(*) FROM 强制结账").fetchone()[0]
+        for j in conn.execute("SELECT * FROM 强制结账").fetchall():
+            leg = conn.execute(
+                "SELECT * FROM 开腿账 WHERE 开腿键=?", (j["开腿键"],)
+            ).fetchone()
+            if not leg or leg["状态"] != "已成对":
+                问题.append(f"强制结{j['强制结键']}开腿非已成对")
+            t = conn.execute(
+                "SELECT * FROM 行程账 WHERE 行程键=?", (j["行程键"],)
+            ).fetchone()
+            if not t or t["状态"] != "已成对":
+                问题.append(f"强制结{j['强制结键']}行程缺失或非已成对")
+            虚 = conn.execute(
+                "SELECT * FROM 刷卡点 WHERE 事件编号=?", (j["虚出事件编号"],)
+            ).fetchone()
+            if not 虚 or 虚["命运"] != "已成对" or 虚["行程键"] != j["行程键"]:
+                问题.append(f"强制结{j['强制结键']}虚出刷卡未连成对")
+
         通过 = 1 if not 问题 else 0
         说明 = "行程账与刷卡点互证通过" if 通过 else "；".join(问题)[:800]
         conn.execute(
@@ -57,6 +76,7 @@ def 跑贯验() -> dict:
             "行程数": len(行程),
             "开腿数": 开腿数,
             "旁路数": 旁路数,
+            "强制结数": 强制结数,
             "说明": 说明,
             "问题": 问题,
         }

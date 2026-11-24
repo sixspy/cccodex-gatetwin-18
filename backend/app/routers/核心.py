@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.db import 夹具目录, 连接
-from app.services import 装载, 贯验, 目录
+from app.services import 装载, 强制结, 贯验, 目录
 
 路由 = APIRouter(prefix="/api")
 
@@ -11,6 +11,14 @@ from app.services import 装载, 贯验, 目录
 class 装载请求(BaseModel):
     批次编号: str = ""
     事件: list = Field(default_factory=list)
+
+
+class 强制结请求(BaseModel):
+    开腿键: str
+    操作员: str = ""
+    原因: str = ""
+    事件时: str = ""
+    站点键: str = ""
 
 
 @路由.get("/健康")
@@ -135,6 +143,21 @@ def 装夹具(名: str = "成对样例"):
 @路由.post("/贯验")
 def 做贯验():
     return 贯验.跑贯验()
+
+
+@路由.post("/强制结")
+def 做强制结(体: 强制结请求):
+    """强制结写闸：对指定在途开腿落虚出成对（同事务四写，幂等可重放）。"""
+    try:
+        return 强制结.执行强制结(**体.model_dump())
+    except 强制结.强制结异常 as e:
+        raise HTTPException(e.状态码, e.信息)
+
+
+@路由.get("/强制结")
+def 读强制结(开腿键: str = ""):
+    """强制结只读接口：开腿键、虚出或旁路、行程键、valid。"""
+    return 强制结.读强制结(开腿键)
 
 
 @路由.get("/贯验")
